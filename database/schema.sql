@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Enum types
-CREATE TYPE user_role AS ENUM ('STUDENT', 'STAFF', 'SECURITY_ADMIN');
+CREATE TYPE user_role AS ENUM ('STUDENT', 'STAFF');
 CREATE TYPE item_type AS ENUM ('LOST', 'FOUND');
 CREATE TYPE item_category AS ENUM ('ELECTRONICS', 'WALLETS_CARDS', 'KEYS', 'CLOTHING', 'DOCUMENTS', 'OTHER');
 CREATE TYPE item_status AS ENUM ('OPEN', 'MATCH_PENDING', 'HANDOVER_SCHEDULED', 'RESOLVED', 'UNCLAIMED_VAULT');
@@ -86,8 +86,6 @@ CREATE TABLE claims (
     challenge_question TEXT NOT NULL,
     claimant_answer TEXT NOT NULL,
     is_challenge_approved BOOLEAN DEFAULT FALSE,
-    handshake_qr_token VARCHAR(500),
-    handover_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     resolved_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -86,8 +86,13 @@ export const itemService = {
 }
 
 export const matchService = {
-  findMatches: (lostItemId: number) =>
-    apiClient.post(`/matches/find`, { lost_item_id: lostItemId }),
+  // Matching also runs automatically when an item is reported; this re-runs it
+  // for one item after new counterparts have been posted.
+  findMatches: (itemId: number) =>
+    apiClient.post(`/matches/find`, { item_id: itemId }),
+
+  // Every match touching one of your items, each carrying both sides of the pair.
+  getMyMatches: () => apiClient.get("/matches/mine"),
 
   getMatch: (id: number) => apiClient.get(`/matches/${id}`),
 
@@ -106,19 +111,13 @@ export const claimService = {
   respondToChallenge: (claimId: number, answer: string) =>
     apiClient.post("/claims/challenge/respond", { claim_id: claimId, answer }),
 
+  // Approval by the finder is the final step: it resolves both items and awards
+  // karma. There is no separate QR handshake.
   approveChallenge: (claimId: number) =>
     apiClient.post("/claims/challenge/approve", { claim_id: claimId }),
-
-  verifyHandshake: (qrToken: string) =>
-    apiClient.post("/claims/handshake/verify", { qr_token: qrToken }),
 }
 
 export const adminService = {
-  getUnclaimedItems: () => apiClient.get("/admin/vault/unclaimed"),
-
-  processVault: (action: string) =>
-    apiClient.post("/admin/vault/process", { action }),
-
   getSystemStats: () => apiClient.get("/admin/stats"),
 }
 

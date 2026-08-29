@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 class MatchResponse(BaseModel):
     id: int
@@ -15,12 +15,32 @@ class MatchResponse(BaseModel):
     total_score: float
     status: str
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
+class MatchedItemSummary(BaseModel):
+    """Enough of the counterpart item to render a match card without a second request."""
+    id: int
+    title: str
+    type: str
+    category: str
+    campus_zone: str
+    image_urls: List[str] = []
+    is_high_value: bool = False
+    incident_time: datetime
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class EnrichedMatchResponse(MatchResponse):
+    """A match plus both sides of it, from the perspective of the requesting user."""
+    your_item: MatchedItemSummary
+    matched_item: MatchedItemSummary
+
 class FindMatchesRequest(BaseModel):
-    lost_item_id: int
+    item_id: int
 
 class ClaimCreate(BaseModel):
     match_id: int
@@ -34,22 +54,13 @@ class ChallengeRespondRequest(BaseModel):
 class ChallengeApproveRequest(BaseModel):
     claim_id: int
 
-class HandshakeVerifyRequest(BaseModel):
-    qr_token: str
-
 class ClaimResponse(BaseModel):
     id: int
     match_id: int
     claimant_id: int
     challenge_question: str
     is_challenge_approved: bool
-    handshake_qr_token: Optional[str] = None
     resolved_at: Optional[datetime] = None
-    
+
     class Config:
         from_attributes = True
-
-class QRHandshakeResponse(BaseModel):
-    qr_token: str
-    expires_in_minutes: int
-    item_id: int

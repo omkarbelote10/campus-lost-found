@@ -32,12 +32,14 @@ class ScoringEngine:
             vec1 = np.array(image_embedding_1)
             vec2 = np.array(image_embedding_2)
             
-            # Cosine similarity
+            # Cosine similarity. float() is required, not cosmetic: numpy returns
+            # a float32 scalar here and psycopg2 cannot adapt one, so persisting
+            # the score raises "can't adapt type 'numpy.float32'".
             similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-            return max(0.0, similarity)
+            return float(max(0.0, similarity))
         except Exception:
             return 0.0
-    
+
     @staticmethod
     def calculate_text_score(text_embedding_1: Optional[list], text_embedding_2: Optional[list]) -> float:
         """Calculate cosine similarity between text embeddings"""
@@ -48,12 +50,13 @@ class ScoringEngine:
             vec1 = np.array(text_embedding_1)
             vec2 = np.array(text_embedding_2)
             
-            # Cosine similarity
+            # See calculate_visual_score: the float() cast keeps psycopg2 able to
+            # persist this value.
             similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-            return max(0.0, similarity)
+            return float(max(0.0, similarity))
         except Exception:
             return 0.0
-    
+
     @staticmethod
     def calculate_category_score(category_1: str, category_2: str) -> float:
         """Category exact match score"""

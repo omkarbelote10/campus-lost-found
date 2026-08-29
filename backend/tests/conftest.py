@@ -6,6 +6,7 @@ tables are created, which keeps the list columns working without a Postgres serv
 """
 import os
 import tempfile
+import zlib
 from pathlib import Path
 
 # Must be set before app.core.database builds its engine at import time.
@@ -33,7 +34,6 @@ for _table in Base.metadata.tables.values():
             _column.type = JSON()
 
 from app.main import app  # noqa: E402  (imported after the type swap)
-from app.models.user import User, UserRole  # noqa: E402
 from tests.helpers import register  # noqa: E402
 
 
@@ -86,18 +86,45 @@ def other_student(client):
     return register(client, email="other@college.edu", name="Other Student")
 
 
-@pytest.fixture
-def admin(client, db_session):
-    """A registered user promoted to SECURITY_ADMIN, re-issued a token carrying that role."""
-    register(client, email="security@college.edu", name="Campus Security")
+class _StubEmbedder:
+    """Deterministic stand-in for SigLIP, used only by the test suite.
 
-    user = db_session.query(User).filter(User.email == "security@college.edu").first()
-    user.role = UserRole.SECURITY_ADMIN
-    db_session.commit()
+    Downloading ~400MB of weights on every test run is not viable, but stubbing
+    the embedder out entirely would leave the storage and scoring paths untested.
+    This hashes tokens into a 768-d vector, so texts that share words land near
+    each other and unrelated texts do not -- enough to exercise both the match
+    and no-match branches.
 
-    response = client.post(
-        "/api/auth/login",
-        json={"email": "security@college.edu", "password": "password123"},
-    )
-    assert response.status_code == 200, response.text
-    return response.json()
+    Deliberately not shipped in app code: a fabricated embedding in production
+    produces a confident-looking similarity that means nothing.
+    """
+
+    is_available = True
+
+    @staticmethod
+    def _hash_tokens(tokens):
+        vec = [0.0] * 768
+        for token in tokens:
+            # crc32, not hash(): PYTHONHASHSEED randomises str hashing per
+            # process, which would make scores differ between runs.
+            slot = zlib.crc32(token.encode("utf-8")) % 768
+            vec[slot] += 1.0
+        norm = sum(value * value for value in vec) ** 0.5
+        return [value / norm for value in vec] if norm else None
+
+    def embed_text(self, text):
+        if not text or not text.strip():
+            return None
+        return self._hash_tokens(text.lower().split())
+
+    def embed_image(self, image):
+        return self._hash_tokens([str(image)])
+
+
+@pytest.fixture(autouse=True)
+def stub_embedder(monkeypatch):
+    stub = _StubEmbedder()
+    monkeypatch.setattr("app.services.embeddings._embedder", stub)
+    monkeypatch.setattr("app.services.embeddings.get_embedder", lambda: stub)
+    monkeypatch.setattr("app.api.items.get_embedder", lambda: stub)
+    return stub

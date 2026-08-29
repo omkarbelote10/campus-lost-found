@@ -1,8 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+import logging
 import os
 from pathlib import Path
+
+# Without this the root logger sits at WARNING and every application INFO line is
+# dropped -- including which device SigLIP loaded onto. Only errors were visible.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s:%(name)s: %(message)s",
+)
 
 from app.core.config import get_settings
 from app.core.database import Base, engine
@@ -52,7 +60,24 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    """Liveness plus which device the embedder resolved to.
+
+    Reports the resolved device without forcing a load, so hitting this endpoint
+    never triggers the model download. `model_loaded` stays false until the first
+    report actually needs an embedding.
+    """
+    from app.services.embeddings import get_embedder, resolve_device
+
+    embedder = get_embedder()
+    return {
+        "status": "healthy",
+        "siglip": {
+            "enabled": settings.SIGLIP_ENABLED,
+            "model": settings.SIGLIP_MODEL,
+            "device": embedder.device or resolve_device(),
+            "model_loaded": embedder.is_available,
+        },
+    }
 
 if __name__ == "__main__":
     import uvicorn
