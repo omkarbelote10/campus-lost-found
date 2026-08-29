@@ -31,6 +31,9 @@ services:
       SECRET_KEY: your-secret-key-change-in-production
       CAMPUS_EMAIL_DOMAIN: college.edu
       HF_HOME: /root/.cache/huggingface
+      # Read from .env (gitignored), never hardcoded here. Needed only for gated
+      # weights such as DINOv3; empty is fine for ungated models like SigLIP.
+      HF_TOKEN: ${HF_TOKEN:-}
       # auto -> CUDA when the GPU reservation below is honoured, CPU otherwise.
       SIGLIP_DEVICE: auto
     # Hand the container the host GPU. Needs the NVIDIA Container Toolkit; without
