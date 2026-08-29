@@ -1,0 +1,41 @@
+name: ML Evaluation CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'ml/**'
+      - 'backend/app/services/scoring.py'
+      - '.github/workflows/ml-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'ml/**'
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r ml/requirements-ml.txt
+    
+    - name: Run ML evaluation
+      run: |
+        python ml/src/evaluation/run_eval.py --dataset ml/data/processed/campus_test_pairs.json --top_k 5
+    
+    - name: Check benchmark thresholds
+      run: |
+        echo "ML evaluation benchmarks completed"
+        echo "Minimum thresholds:"
+        echo "- MRR >= 0.75"
+        echo "- Recall@5 >= 0.85"

@@ -1,0 +1,417 @@
+Here is the consolidated, production-grade master specification. It merges your **enterprise-grade GitHub repository layout, dedicated `ml/` evaluation research pipeline, and CI/CD workflows** with our **SigLIP multimodal math, PostGIS spatial decay, Zero-Knowledge claim verification, and Handshake QR security engine**.
+
+Save this entire file as **`SPEC.md`** at the root of your repository for Cursor IDE, Windsurf, or autonomous coding agents to build the complete system.
+
+---
+
+```markdown
+# 🏛️ CAMPUS LOST-AND-FOUND INTELLIGENCE SYSTEM (CLFIS)
+## Enterprise AIML & Full-Stack Production Specification (SIH & Portfolio Edition)
+
+---
+
+## 1. PROJECT OVERVIEW & SCOPE
+CLFIS is a production-grade multimodal retrieval and spatiotemporal matching platform tailored for university campuses. It automates item resolution between "Lost" and "Found" reports using local vision-language embeddings (`google/siglip-base-patch16-224`), alphanumeric OCR token mining, mathematical decay functions, Zero-Knowledge claim validation, and physical handover logging via time-bound cryptographic QR handshakes.
+
+### System Tenets
+1. **Multimodal Information Retrieval**: SigLIP shared 768-d embedding space for text $\leftrightarrow$ image, image $\leftrightarrow$ image, and text $\leftrightarrow$ text retrieval.
+2. **Context-Aware Scoring**: Spatiotemporal penalization using campus geofences (PostGIS) and exponential time decay.
+3. **Zero-Knowledge Security**: Automatic redaction and CSS blurring on high-value items with dynamic security challenge prompts.
+4. **Physical Custody Audit**: Cryptographic QR handshakes that verify in-person exchanges and award user reputation (karma).
+5. **AIML Rigor**: Dedicated ML evaluation suite measuring Recall@K, MRR, NDCG, and ROC-AUC with synthetic benchmark generators.
+
+---
+
+## 2. PRODUCTION REPOSITORY STRUCTURE
+
+```text
+campus-lost-found/
+├── .github/
+│   └── workflows/
+│       ├── backend-ci.yml       # Pytest, flake8, black, type checking
+│       ├── frontend-ci.yml      # ESLint, Prettier, Next.js build
+│       └── ml-ci.yml            # Model benchmark test & evaluation runs
+├── docs/
+│   ├── architecture.md          # Multi-tier system diagram & flowcharts
+│   ├── api.md                   # Complete OpenAPI/REST documentation
+│   ├── database.md              # Relational schemas & pgvector/PostGIS indexes
+│   ├── ai-matching.md           # SigLIP, decay math, and scoring formulation
+│   ├── deployment.md            # Docker Compose & local hardware runbooks
+│   └── contribution.md          # Git workflow, PR template, commit conventions
+├── database/
+│   ├── schema.sql               # PostgreSQL 16 DDL with pgvector/postgis
+│   ├── seed.sql                 # Campus mock data (zones, mock items)
+│   └── diagrams/
+│       └── er-diagram.png       # Database Entity-Relationship map
+├── ml/
+│   ├── data/
+│   │   ├── raw/                 # Unprocessed sample lost/found pairs
+│   │   ├── processed/           # Normalized paired benchmark sets
+│   │   └── sample/              # Test images for quick regression
+│   ├── notebooks/
+│   │   ├── 01_data_exploration.ipynb
+│   │   ├── 02_siglip_embeddings.ipynb
+│   │   ├── 03_spatiotemporal_tuning.ipynb
+│   │   └── 04_eval_metrics_mrr_ndcg.ipynb
+│   ├── src/
+│   │   ├── preprocessing/
+│   │   │   ├── text.py          # Lowercase, punctuation, campus aliases
+│   │   │   └── images.py        # Aspect ratio padding, RGB conversion
+│   │   ├── embeddings/
+│   │   │   ├── siglip_model.py  # SigLIP loader (Hugging Face)
+│   │   │   └── ocr_miner.py     # Tesseract token parsing
+│   │   ├── retrieval/
+│   │   │   └── vector_search.py # pgvector ANN querying
+│   │   ├── ranking/
+│   │   │   └── scorer.py        # Composite mathematical formula
+│   │   └── evaluation/
+│   │       ├── metrics.py       # Precision@K, Recall@K, MRR, NDCG
+│   │       └── run_eval.py      # Benchmark evaluation script
+│   ├── requirements-ml.txt
+│   └── README.md
+├── backend/
+│   ├── app/
+│   │   ├── main.py              # FastAPI app lifecycle, CORS, static mounts
+│   │   ├── api/
+│   │   │   ├── auth.py          # SSO verification, JWT issuance, RBAC
+│   │   │   ├── items.py         # Multi-image upload, feed, geofenced queries
+│   │   │   ├── matches.py       # Match retrieval, candidate rankings
+│   │   │   ├── claims.py        # ZK challenge, verification, QR handshake
+│   │   │   └── admin.py         # Custody audit, vault, lifecycle management
+│   │   ├── core/
+│   │   │   ├── config.py        # Pydantic Settings (.env configuration)
+│   │   │   ├── database.py      # SQLAlchemy engine & session factory
+│   │   │   └── security.py      # Passlib bcrypt, python-jose, QR crypto
+│   │   ├── models/
+│   │   │   ├── user.py          # User & Role tables
+│   │   │   ├── item.py          # Item table (pgvector + PostGIS geometry)
+│   │   │   └── match.py         # Match, Claim, and Custody tables
+│   │   ├── schemas/
+│   │   │   ├── user.py          # Pydantic request/response schemas
+│   │   │   ├── item.py
+│   │   │   └── match.py
+│   │   ├── services/
+│   │   │   ├── auth_service.py
+│   │   │   ├── item_service.py
+│   │   │   ├── matching_service.py # Non-blocking pipeline execution
+│   │   │   └── storage_service.py  # Local/S3 storage handler
+│   │   └── utils/
+│   │       ├── validators.py    # Campus email regex & file integrity
+│   │       └── helpers.py       # Timezone & string parsers
+│   ├── tests/
+│   │   ├── test_auth.py
+│   │   ├── test_items.py
+│   │   └── test_matching.py
+│   ├── uploads/                 # Static upload media target
+│   ├── requirements.txt
+│   └── Dockerfile
+├── frontend/
+│   ├── public/
+│   │   └── static/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.tsx
+│   │   │   ├── page.tsx             # Public landing & metrics dashboard
+│   │   │   ├── login/page.tsx       # Campus SSO & login
+│   │   │   ├── feed/page.tsx        # Filterable feed with masked previews
+│   │   │   ├── report/
+│   │   │   │   ├── lost/page.tsx    # Multi-step lost report + PDF export
+│   │   │   │   └── found/page.tsx   # Multi-image found report + auto-fill
+│   │   │   ├── dashboard/page.tsx   # User items, matches, notifications
+│   │   │   ├── claims/[id]/page.tsx # ZK challenge UI & QR handshake modal
+│   │   │   └── admin/page.tsx       # Security desk, QR scanner, vault ledger
+│   │   ├── components/
+│   │   │   ├── ui/                  # Complete shadcn/ui components
+│   │   │   ├── Navbar.tsx
+│   │   │   ├── ItemCard.tsx         # Sensitive blur overlay card
+│   │   │   ├── LocationPicker.tsx   # Interactive campus zone selector
+│   │   │   ├── HandshakeQR.tsx      # Time-bound encrypted QR renderer
+│   │   │   ├── QRScannerModal.tsx   # html5-qrcode camera scanner
+│   │   │   └── PosterGenerator.tsx  # jsPDF printable bulletin notice
+│   │   ├── hooks/                   # Custom React hooks (useAuth, useMatches)
+│   │   ├── services/                # Axios API service clients
+│   │   ├── types/                   # TypeScript interfaces
+│   │   └── lib/
+│   │       └── utils.ts
+│   ├── package.json
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
+├── scripts/
+│   ├── setup.sh                 # Environment initializer
+│   ├── seed_database.py         # Mock campus populator
+│   └── benchmark_ml.py          # ML performance verification
+├── docker-compose.yml
+├── Makefile
+├── .env.example
+├── .gitignore
+└── README.md
+
+```
+
+---
+
+## 3. CORE MODULE MATRIX
+
+| Module | Purpose | Tech Stack | Priority |
+| --- | --- | --- | --- |
+| **Authentication & SSO** | Campus domain validation, JWT tokens, RBAC (`STUDENT`, `STAFF`, `SECURITY_ADMIN`) | FastAPI, Python-Jose, Passlib | ⭐⭐⭐⭐⭐ |
+| **Report Lifecycle** | Multi-image (up to 3) ingestion, item categorization, private Ground Truth storage | Next.js 14, FastAPI, SQLAlchemy | ⭐⭐⭐⭐⭐ |
+| **Multimodal Embedding** | Local zero-shot vectorization of images and text descriptions into shared 768-d space | Hugging Face (`google/siglip-base-patch16-224`), PyTorch | ⭐⭐⭐⭐⭐ |
+| **OCR Token Mining** | Automated extraction of Student IDs, serial numbers, and roll numbers from photos | Tesseract / EasyOCR | ⭐⭐⭐⭐⭐ |
+| **Spatiotemporal Decays** | Campus zone / Haversine distance scoring and exponential time decay | PostGIS, Python math | ⭐⭐⭐⭐⭐ |
+| **Candidate Retrieval** | Approximate Nearest Neighbor (ANN) vector search on opposite item categories | PostgreSQL 16, `pgvector` (HNSW) | ⭐⭐⭐⭐⭐ |
+| **Match Scoring Engine** | Execution of the hybrid scoring formula ($S_{total}$) with dynamic weight rebalancing | Python, `asyncio.to_thread` | ⭐⭐⭐⭐⭐ |
+| **Zero-Knowledge Claims** | Blur public sensitive previews, generate dynamic verification questions | Next.js, FastAPI, CSS Backdrop-Blur | ⭐⭐⭐⭐⭐ |
+| **Handshake QR System** | Cryptographic 15-minute token + webcam scanner for in-person physical handoffs | `qrcode.react`, `html5-qrcode`, JWT | ⭐⭐⭐⭐⭐ |
+| **Bulletin PDF Generator** | Instant printable lost-item notice flyers with dynamic QR link for campus noticeboards | `jsPDF`, Next.js | ⭐⭐⭐⭐ |
+| **Unclaimed Asset Vault** | Automated policy management for items unrecovered after 45 days (charity/auction) | PostgreSQL Cron / FastAPI Service | ⭐⭐⭐ |
+| **ML Evaluation Suite** | Measure MRR, Recall@K, and NDCG over test benchmarks for technical validation | Scikit-learn, Pandas, PyTorch | ⭐⭐⭐⭐⭐ |
+
+---
+
+## 4. DATABASE SPECIFICATION (PostgreSQL + pgvector + PostGIS)
+
+### Database Extensions
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+```
+
+### Relational Schema Definition (`backend/app/models/`)
+
+#### 1. `User` (`user.py`)
+
+* `id`: Integer, Primary Key, Index.
+* `email`: String(255), Unique, Not Null (Validated against campus domain regex).
+* `hashed_password`: String(255), Not Null.
+* `full_name`: String(100), Not Null.
+* `phone_number`: String(20), Nullable.
+* `role`: Enum (`STUDENT`, `STAFF`, `SECURITY_ADMIN`), Default: `STUDENT`.
+* `karma_score`: Integer, Default: 100 (Increments upon successful item handovers).
+* `created_at`: DateTime(timezone=True), Server Default: `NOW()`.
+
+#### 2. `Item` (`item.py`)
+
+* `id`: Integer, Primary Key, Index.
+* `user_id`: Integer, Foreign Key (`users.id`), Not Null.
+* `type`: Enum (`LOST`, `FOUND`), Not Null, Index.
+* `title`: String(150), Not Null.
+* `description`: Text, Not Null.
+* `category`: Enum (`ELECTRONICS`, `WALLETS_CARDS`, `KEYS`, `CLOTHING`, `DOCUMENTS`, `OTHER`), Not Null.
+* `campus_zone`: String(100), Not Null (e.g., "Library Zone", "Engineering Block B", "Hostel 3").
+* `latitude`: Float, Nullable.
+* `longitude`: Float, Nullable.
+* `incident_time`: DateTime(timezone=True), Not Null.
+* `image_urls`: ARRAY of String(500), Default: `[]`.
+* `image_embedding`: `Vector(768)`, Nullable (Indexed via `pgvector` HNSW index).
+* `text_embedding`: `Vector(768)`, Nullable.
+* `ocr_tokens`: ARRAY of Strings, Default: `[]`.
+* `is_high_value`: Boolean, Default: `False` (Enforces masking on public listings).
+* `private_details`: Text, Nullable (Ground truth for Zero-Knowledge validation).
+* `status`: Enum (`OPEN`, `MATCH_PENDING`, `HANDOVER_SCHEDULED`, `RESOLVED`, `UNCLAIMED_VAULT`), Default: `OPEN`.
+* `created_at`: DateTime(timezone=True), Server Default: `NOW()`.
+
+#### 3. `Match` (`match.py`)
+
+* `id`: Integer, Primary Key, Index.
+* `lost_item_id`: Integer, Foreign Key (`items.id`), Not Null.
+* `found_item_id`: Integer, Foreign Key (`items.id`), Not Null.
+* `visual_score`: Float, Not Null ($S_{visual}$).
+* `text_score`: Float, Not Null ($S_{text}$).
+* `category_score`: Float, Not Null ($S_{cat}$).
+* `spatial_decay`: Float, Not Null ($D_{spatial}$).
+* `temporal_decay`: Float, Not Null ($D_{temporal}$).
+* `ocr_bonus`: Float, Not Null ($B_{ocr}$).
+* `total_score`: Float, Not Null, Index ($S_{total}$).
+* `status`: Enum (`HIGH_CONFIDENCE`, `POTENTIAL`, `REJECTED`, `VERIFIED`), Not Null.
+* `created_at`: DateTime(timezone=True), Server Default: `NOW()`.
+
+#### 4. `Claim` (`match.py`)
+
+* `id`: Integer, Primary Key.
+* `match_id`: Integer, Foreign Key (`matches.id`), Not Null.
+* `claimant_id`: Integer, Foreign Key (`users.id`), Not Null.
+* `challenge_question`: Text, Not Null.
+* `claimant_answer`: Text, Not Null.
+* `is_challenge_approved`: Boolean, Default: `False`.
+* `handshake_qr_token`: String(500), Nullable (Short-lived signed JWT).
+* `handover_by_user_id`: Integer, Foreign Key (`users.id`), Nullable.
+* `resolved_at`: DateTime(timezone=True), Nullable.
+
+---
+
+## 5. MATHEMATICAL SCORING PIPELINE (`backend/app/ml/scorer.py`)
+
+### Production Hybrid Formula
+
+$$S_{total} = \underbrace{\Big( w_v \cdot S_{visual} + w_t \cdot S_{text} + w_c \cdot S_{cat} \Big)}_{\text{Multimodal Feature Match}} \times \underbrace{\Big( D_{spatial} \times D_{temporal} \Big)}_{\text{Contextual Decay}} + B_{ocr}$$
+
+### 1. Weights & Dynamic Rebalancing
+
+* Default Weights (both reports have photos): $w_v = 0.45$, $w_t = 0.30$, $w_c = 0.25$.
+* Single Image / Text-Only Missing Image Weight Rebalancing: If either item lacks an image, set $w_v = 0.0$, $w_t = 0.70$, $w_c = 0.30$.
+* Category Similarity ($S_{cat}$): `1.0` if `lost.category == found.category`, else `0.0`.
+
+### 2. Contextual Decays
+
+* **Temporal Decay ($D_{temporal}$)**:
+
+$$\Delta t = \max\left(0, \frac{\text{found.incident\_time} - \text{lost.incident\_time}}{86400 \text{ seconds}}\right)$$
+
+
+$$D_{temporal} = \exp(-\lambda \cdot \Delta t), \quad \lambda = 0.05$$
+
+
+
+*(If $\text{found.incident\_time} < \text{lost.incident\_time} - 1\text{ day}$, penalize with $D_{temporal} = 0.1$).*
+* **Spatial Decay ($D_{spatial}$)**:
+* If GPS coordinates present: $D_{spatial} = \frac{1}{1 + 0.5 \cdot \text{distance(km)}}$.
+* If using Campus Zones: Exact Zone Match = `1.0`, Adjacent Zone = `0.8`, Distant Zone = `0.4`.
+
+
+
+### 3. OCR Direct Identifier Bonus ($B_{ocr}$)
+
+* Extract all alphanumeric tokens with length $\ge 4$.
+* If $\text{len}(\text{lost.ocr\_tokens} \cap \text{found.ocr\_tokens}) > 0$: $B_{ocr} = +0.25$. Else: $B_{ocr} = 0.0$.
+
+### 4. Decision Thresholds & Normalization
+
+$$\text{Final } S_{total} = \min(1.0, \max(0.0, S_{total}))$$
+
+* $S_{total} \ge 0.80 \rightarrow$ `HIGH_CONFIDENCE` (Instant notification + ZK Challenge triggered).
+* $0.55 \le S_{total} < 0.80 \rightarrow$ `POTENTIAL` (Listed in dashboard "Suggested Matches").
+* $S_{total} < 0.55 \rightarrow$ `DISCARD` (Not persisted to database).
+
+---
+
+## 6. AIML EVALUATION SUITE (`ml/src/evaluation/`)
+
+To validate system performance scientifically, the `ml/` package provides benchmark runners:
+
+### Metrics Measured (`metrics.py`)
+
+1. **Top-K Recall ($\text{Recall}@K$)**: Proportion of true lost-found matches found within top $K$ retrieved items:
+
+$$\text{Recall}@K = \frac{|\text{Relevant Candidates} \cap \text{Top-}K|}{|\text{Total Relevant Candidates}|}$$
+
+
+2. **Mean Reciprocal Rank (MRR)**: Evaluates where the correct match appears in the ranked candidate list:
+
+$$\text{MRR} = \frac{1}{|Q|} \sum_{i=1}^{|Q|} \frac{1}{\text{rank}_i}$$
+
+
+3. **Normalized Discounted Cumulative Gain ($\text{NDCG}@K$)**: Measures ranking quality with relevance grades.
+
+### Benchmark Command
+
+```bash
+python ml/src/evaluation/run_eval.py --dataset ml/data/processed/campus_test_pairs.json --top_k 5
+
+```
+
+---
+
+## 7. BACKEND API SPECIFICATION (FastAPI)
+
+### Authentication (`/api/auth`)
+
+* `POST /register`: Registers user with email domain validation (e.g., `@college.edu`).
+* `POST /login`: Issues JWT bearer token containing `sub` (User ID) and `role`.
+* `GET /me`: Returns profile and `karma_score`.
+
+### Item Lifecycle (`/api/items`)
+
+* `POST /report`: Accepts `multipart/form-data` with up to 3 images, description, zone, timestamp, and category.
+* Saves images to disk.
+* Returns `201 Created` immediately.
+* Dispatches non-blocking match execution via `asyncio.to_thread` in FastAPI `BackgroundTasks`.
+
+
+* `GET /feed`: Returns paginated open items. Automatically redacts image paths of high-value items if requester is not the owner or an admin.
+* `GET /{item_id}`: Single item detail view.
+
+### Zero-Knowledge Claims & Handshake (`/api/claims`)
+
+* `POST /challenge/create`: Initiates claim verification prompt.
+* `POST /challenge/respond`: Claimant submits descriptive answers.
+* `POST /challenge/approve`: Finder or Security Desk approves answer; issues signed 15-minute JWT QR Token.
+* `POST /handshake/verify`: Finder or Admin scans QR token; marks status as `RESOLVED` and awards $+25$ Karma to finder.
+
+### Admin & Vault (`/api/admin`)
+
+* `GET /vault/unclaimed`: Retrieves items older than 45 days.
+* `POST /vault/process`: Bulk updates status to `UNCLAIMED_VAULT` for auction or donation logging.
+
+---
+
+## 8. FRONTEND SPECIFICATION (Next.js 14 App Router)
+
+### Pages & User Flows
+
+1. **Public Feed (`/feed`)**: Instant search bar with category badges and campus zone filters. Sensitive items display a styled `backdrop-blur-md` overlay with a "Claim & Verify" action button.
+2. **Report Lost / Found (`/report/lost`, `/report/found`)**: Multi-image drag-and-drop dropzone with preview, zone dropdown, and high-value toggle.
+3. **Printable Notice Generator (`PosterGenerator.tsx`)**: One-click generation of a clean PDF poster via `jsPDF` containing item photo, details, and dynamic QR link for campus bulletin boards.
+4. **Interactive Claim Portal (`/claims/[id]`)**: Step-by-step verification wizard (Question Prompt $\rightarrow$ Awaiting Finder Approval $\rightarrow$ Present Handshake QR).
+5. **Admin / Security Handshake Scanner (`/admin`)**: Integrated webcam QR scanner powered by `html5-qrcode` to verify claimant tokens during physical item pickup.
+
+---
+
+## 9. CI/CD WORKFLOWS & QUALITY ASSURANCE
+
+### Backend CI (`.github/workflows/backend-ci.yml`)
+
+* Runs `flake8` and `black --check`.
+* Runs `pytest` suite for auth, item filtering, and scoring math.
+
+### Frontend CI (`.github/workflows/frontend-ci.yml`)
+
+* Executes ESLint, TypeScript type-check (`tsc --noEmit`), and Next.js static build test.
+
+### ML CI (`.github/workflows/ml-ci.yml`)
+
+* Runs `ml/src/evaluation/run_eval.py` to ensure $\text{MRR} \ge 0.75$ and $\text{Recall}@5 \ge 0.85$ on benchmark datasets.
+
+---
+
+## 10. SETUP & RUNBOOK
+
+### 1. Database Setup
+
+```bash
+docker run --name clfis-pg -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=clfis_db -p 5432:5432 -d postgis/postgis:16-3.4
+
+```
+
+### 2. Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+```
+
+### 3. Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+
+```
+
+### 4. Running ML Benchmarks
+
+```bash
+python ml/src/evaluation/run_eval.py
+
+```
+
+```
+
+```

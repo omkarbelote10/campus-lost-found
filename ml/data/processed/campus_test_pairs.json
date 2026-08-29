@@ -1,0 +1,139 @@
+[
+  {
+    "lost_item": {
+      "id": "L1",
+      "title": "Midnight Blue Dell XPS 15",
+      "description": "Dell XPS 15 inch laptop with stickers on lid (GitHub and Python). Serial number DL-992384. Left in library reading room 3rd floor.",
+      "category": "ELECTRONICS",
+      "campus_zone": "Library Zone",
+      "days_ago": 2,
+      "ocr_tokens": ["DL992384", "DELL", "XPS"]
+    },
+    "ground_truth_found_id": "F1",
+    "candidates": [
+      {
+        "id": "F1",
+        "title": "Found Dell Laptop in Library",
+        "description": "Found a dark blue Dell laptop on 3rd floor study desk with coding stickers. Serial DL992384.",
+        "category": "ELECTRONICS",
+        "campus_zone": "Library Zone",
+        "days_ago": 1,
+        "ocr_tokens": ["DL992384", "DELL"]
+      },
+      {
+        "id": "F2",
+        "title": "Black HP Laptop Charger",
+        "description": "HP 65W USB-C charger found in Engineering Block B cafeteria.",
+        "category": "ELECTRONICS",
+        "campus_zone": "Engineering Block B",
+        "days_ago": 1,
+        "ocr_tokens": ["HP65W"]
+      },
+      {
+        "id": "F3",
+        "title": "Brown Leather Wallet",
+        "description": "Men's leather wallet found near Hostel 3.",
+        "category": "WALLETS_CARDS",
+        "campus_zone": "Hostel 3",
+        "days_ago": 3,
+        "ocr_tokens": []
+      }
+    ]
+  },
+  {
+    "lost_item": {
+      "id": "L2",
+      "title": "Student ID Card for Alex Morgan",
+      "description": "Campus ID card with roll number CS2025-4491, blue lanyard attached.",
+      "category": "DOCUMENTS",
+      "campus_zone": "Science Block",
+      "days_ago": 1,
+      "ocr_tokens": ["CS20254491", "ALEX", "MORGAN"]
+    },
+    "ground_truth_found_id": "F4",
+    "candidates": [
+      {
+        "id": "F4",
+        "title": "Student Smart Card",
+        "description": "Found ID card with blue ribbon belonging to CS department student CS2025-4491.",
+        "category": "DOCUMENTS",
+        "campus_zone": "Science Block",
+        "days_ago": 1,
+        "ocr_tokens": ["CS20254491"]
+      },
+      {
+        "id": "F5",
+        "title": "Car Keychain with Toyota Logo",
+        "description": "Set of 3 keys with black remote.",
+        "category": "KEYS",
+        "campus_zone": "Administration Block",
+        "days_ago": 2,
+        "ocr_tokens": []
+      }
+    ]
+  },
+  {
+    "lost_item": {
+      "id": "L3",
+      "title": "Apple AirPods Pro 2nd Gen Case",
+      "description": "White AirPods Pro case in a green silicone cover with small carabiner clip.",
+      "category": "ELECTRONICS",
+      "campus_zone": "Sports Complex",
+      "days_ago": 3,
+      "ocr_tokens": ["AIRPODS", "APPLE"]
+    },
+    "ground_truth_found_id": "F6",
+    "candidates": [
+      {
+        "id": "F6",
+        "title": "Wireless Earbuds Case in Green Cover",
+        "description": "Apple charging case with green rubber sleeve found near basketball court.",
+        "category": "ELECTRONICS",
+        "campus_zone": "Sports Complex",
+        "days_ago": 2,
+        "ocr_tokens": ["APPLE"]
+      },
+      {
+        "id": "F7",
+        "title": "Gym Water Bottle",
+        "description": "Stainless steel Hydro Flask in Sports gym.",
+        "category": "OTHER",
+        "campus_zone": "Sports Complex",
+        "days_ago": 1,
+        "ocr_tokens": []
+      }
+    ]
+  },
+  {
+    "lost_item": {
+      "id": "L4",
+      "title": "Red Nike Windbreaker Jacket",
+      "description": "Size M red hooded jacket with white swoosh, left in Lecture Hall 401.",
+      "category": "CLOTHING",
+      "campus_zone": "Engineering Block B",
+      "days_ago": 4,
+      "ocr_tokens": ["NIKE"]
+    },
+    "ground_truth_found_id": "F8",
+    "candidates": [
+      {
+        "id": "F8",
+        "title": "Red Sports Jacket Nike",
+        "description": "Red rain jacket found on back seat of LH401 in Eng Block.",
+        "category": "CLOTHING",
+        "campus_zone": "Engineering Block B",
+        "days_ago": 3,
+        "ocr_tokens": ["NIKE"]
+      },
+      {
+        "id": "F9",
+        "title": "Scientific Calculator Casio fx-991EX",
+        "description": "Casio calculator left in math lab.",
+        "category": "ELECTRONICS",
+        "campus_zone": "Science Block",
+        "days_ago": 1,
+        "ocr_tokens": ["FX991EX"]
+      }
+    ]
+  }
+]
