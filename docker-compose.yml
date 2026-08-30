@@ -35,7 +35,7 @@ services:
       # weights such as DINOv3; empty is fine for ungated models like SigLIP.
       HF_TOKEN: ${HF_TOKEN:-}
       # auto -> CUDA when the GPU reservation below is honoured, CPU otherwise.
-      SIGLIP_DEVICE: auto
+      EMBEDDING_DEVICE: auto
     # Hand the container the host GPU. Needs the NVIDIA Container Toolkit; without
     # it the container still starts and SIGLIP_DEVICE=auto falls back to CPU.
     deploy:

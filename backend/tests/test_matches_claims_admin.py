@@ -27,6 +27,51 @@ def make_counterpart(client, token, **overrides):
 
 # ------------------------------------------------------------------ scoring
 
+def test_ocr_tokens_are_identifiers_not_ordinary_words():
+    """Regression: the extractor matched [A-Za-z0-9]{4,}, so "black" counted as a
+    serial number. A phone and an umbrella both described as black collected the
+    full 0.25 identity bonus -- the strongest term in the formula -- and every
+    unrelated pair saturated to HIGH_CONFIDENCE."""
+    from app.utils.validators import extract_ocr_tokens
+
+    tokens = extract_ocr_tokens(
+        "Black iPhone with a cracked screen, blue silicone case, serial DL992384"
+    )
+    assert "DL992384" in tokens
+    for word in ("BLACK", "IPHONE", "CRACKED", "SCREEN", "SILICONE", "CASE"):
+        assert word not in tokens, f"{word} is a word, not an identifier"
+
+    # Two unrelated items sharing only a colour must share no tokens at all.
+    phone = set(extract_ocr_tokens("Black Apple iPhone, blue case"))
+    umbrella = set(extract_ocr_tokens("Black umbrella left near the library"))
+    assert not (phone & umbrella)
+
+
+def test_a_confident_brand_disagreement_penalises_a_pair():
+    """Same category, similar-looking, but the photos carry different brand
+    marks -> almost certainly not the same object. An unknown brand must stay
+    neutral, since absence of evidence is not evidence of a mismatch."""
+    from app.services.scoring import ScoringEngine
+
+    assert ScoringEngine.calculate_brand_factor("Motorola", "Motorola") == 1.0
+    assert ScoringEngine.calculate_brand_factor("motorola", "Motorola") == 1.0
+    assert ScoringEngine.calculate_brand_factor("Motorola", None) == 1.0
+    assert ScoringEngine.calculate_brand_factor(None, None) == 1.0
+    assert ScoringEngine.calculate_brand_factor("Motorola", "Apple") < 1.0
+
+    args = dict(
+        visual_score=0.85, text_score=0.8, category_score=1.0,
+        spatial_decay=1.0, temporal_decay=1.0, ocr_bonus=0.0,
+        has_image_1=True, has_image_2=True,
+    )
+    same, _ = ScoringEngine.calculate_total_score(**args, brand_factor=1.0)
+    differ, status = ScoringEngine.calculate_total_score(
+        **args, brand_factor=ScoringEngine.BRAND_MISMATCH_PENALTY
+    )
+    assert differ < same
+    assert status != "HIGH_CONFIDENCE"
+
+
 def test_similarity_scores_are_plain_floats():
     """Regression: np.dot returns a numpy.float32 and psycopg2 cannot adapt one,
     so persisting a match died with "can't adapt type 'numpy.float32'". It only
@@ -90,6 +135,46 @@ def test_unrelated_items_do_not_match(client, student, other_student, db_session
     )
 
     assert db_session.query(Match).count() == 0
+
+
+def test_rescoring_never_deletes_a_match_that_has_a_claim(
+    client, student, other_student, db_session
+):
+    """claims.match_id cascade-deletes with its match, so dropping a match that
+    fell below threshold would silently erase a real handover record. Such a
+    match must be downgraded in place instead."""
+    from app.models.item import Item
+    from app.services.matching import find_matches_for_item
+
+    lost = make_item(client, student["access_token"], type="LOST", title="Lost umbrella")
+    make_counterpart(client, other_student["access_token"], title="Found umbrella")
+    match = db_session.query(Match).first()
+    assert match is not None
+
+    db_session.add(
+        Claim(
+            match_id=match.id,
+            claimant_id=student["user"]["id"],
+            challenge_question="q",
+            claimant_answer="a",
+        )
+    )
+    db_session.commit()
+
+    # Force every score to zero so the pair is rejected on the next pass.
+    for item in db_session.query(Item).all():
+        item.text_embedding = None
+        item.image_embedding = None
+        item.ocr_tokens = []
+        item.campus_zone = f"Zone {item.id}"
+    db_session.commit()
+
+    item = db_session.query(Item).filter(Item.id == lost["id"]).first()
+    find_matches_for_item(db_session, item)
+    db_session.commit()
+
+    assert db_session.query(Claim).count() == 1, "the claim must survive a re-score"
+    assert db_session.query(Match).filter(Match.id == match.id).first() is not None
 
 
 def test_rerunning_matching_does_not_duplicate_rows(client, student, other_student, db_session):
@@ -169,6 +254,25 @@ def test_my_matches_is_empty_without_items(client, student):
     response = client.get("/api/matches/mine", headers=auth_header(student["access_token"]))
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_item_matches_are_enriched_for_the_confirmation_screen(
+    client, student, other_student
+):
+    """The report page renders match cards immediately after submitting, so this
+    must carry the counterpart's details rather than bare ids."""
+    lost = make_item(client, student["access_token"], type="LOST")
+    found = make_counterpart(client, other_student["access_token"])
+
+    payload = client.get(
+        f"/api/matches/item/{lost['id']}", headers=auth_header(student["access_token"])
+    ).json()
+
+    assert len(payload) == 1
+    assert payload[0]["your_item"]["id"] == lost["id"]
+    assert payload[0]["matched_item"]["id"] == found["id"]
+    assert payload[0]["matched_item"]["title"] == "Found black iPhone 14"
+    assert "total_score" in payload[0]
 
 
 def test_item_matches_requires_ownership(client, student, other_student):

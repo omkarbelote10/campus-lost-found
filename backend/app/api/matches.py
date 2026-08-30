@@ -113,14 +113,17 @@ async def get_match(
     return MatchResponse.from_orm(match)
 
 
-@router.get("/item/{item_id}", response_model=List[MatchResponse])
+@router.get("/item/{item_id}", response_model=List[EnrichedMatchResponse])
 async def get_item_matches(
     item_id: int,
     user_id: int = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
-    """Get all matches for an item"""
+    """Matches for one item, best score first, with both sides embedded.
 
+    Enriched so the report confirmation screen can render match cards straight
+    after submitting, without a second round trip per counterpart.
+    """
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -130,5 +133,16 @@ async def get_item_matches(
     matches = db.query(Match).filter(
         (Match.lost_item_id == item_id) | (Match.found_item_id == item_id)
     ).order_by(Match.total_score.desc()).all()
+    if not matches:
+        return []
 
-    return [MatchResponse.from_orm(m) for m in matches]
+    needed_ids = {m.lost_item_id for m in matches} | {m.found_item_id for m in matches}
+    items_by_id = {
+        row.id: row for row in db.query(Item).filter(Item.id.in_(needed_ids)).all()
+    }
+
+    return [
+        _enrich(m, items_by_id, {item_id})
+        for m in matches
+        if m.lost_item_id in items_by_id and m.found_item_id in items_by_id
+    ]

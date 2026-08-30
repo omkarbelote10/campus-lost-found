@@ -69,13 +69,20 @@ async def health_check():
     from app.services.embeddings import get_embedder, resolve_device
 
     embedder = get_embedder()
+    device = resolve_device()
     return {
         "status": "healthy",
-        "siglip": {
-            "enabled": settings.SIGLIP_ENABLED,
-            "model": settings.SIGLIP_MODEL,
-            "device": embedder.device or resolve_device(),
-            "model_loaded": embedder.is_available,
+        "embeddings": {
+            "enabled": settings.EMBEDDINGS_ENABLED,
+            "device": device,
+            "text": {
+                "model": embedder.text.model_name,
+                "loaded": embedder.text.is_available,
+            },
+            "image": {
+                "model": embedder.image.model_name,
+                "loaded": embedder.image.is_available,
+            },
         },
     }
 

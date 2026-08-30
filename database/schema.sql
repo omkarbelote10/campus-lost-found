@@ -41,6 +41,7 @@ CREATE TABLE items (
     image_embedding vector(768),
     text_embedding vector(768),
     ocr_tokens TEXT[] DEFAULT '{}',
+    brand VARCHAR(50),
     is_high_value BOOLEAN DEFAULT FALSE,
     private_details TEXT,
     status item_status DEFAULT 'OPEN',

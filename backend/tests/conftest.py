@@ -86,8 +86,17 @@ def other_student(client):
     return register(client, email="other@college.edu", name="Other Student")
 
 
+class _StubTower:
+    """Mirrors the _LazyModel surface that /health reads."""
+
+    def __init__(self, name):
+        self.model_name = name
+        self.is_available = True
+        self.device = "cpu"
+
+
 class _StubEmbedder:
-    """Deterministic stand-in for SigLIP, used only by the test suite.
+    """Deterministic stand-in for both embedding towers, used only by the tests.
 
     Downloading ~400MB of weights on every test run is not viable, but stubbing
     the embedder out entirely would leave the storage and scoring paths untested.
@@ -100,6 +109,10 @@ class _StubEmbedder:
     """
 
     is_available = True
+
+    def __init__(self):
+        self.text = _StubTower("stub-text")
+        self.image = _StubTower("stub-image")
 
     @staticmethod
     def _hash_tokens(tokens):
@@ -119,6 +132,11 @@ class _StubEmbedder:
 
     def embed_image(self, image):
         return self._hash_tokens([str(image)])
+
+    def detect_brand(self, image):
+        """Tests never exercise real brand reading; unknown keeps the factor at
+        1.0 so brand never silently changes an unrelated test's score."""
+        return None
 
 
 @pytest.fixture(autouse=True)

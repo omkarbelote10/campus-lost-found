@@ -11,7 +11,7 @@ from typing import List, Tuple
 from sqlalchemy.orm import Session
 
 from app.models.item import Item, ItemStatus, ItemType
-from app.models.match import Match, MatchStatus
+from app.models.match import Claim, Match, MatchStatus
 from app.services.scoring import ScoringEngine
 
 
@@ -66,6 +66,10 @@ def score_pair(lost_item: Item, found_item: Item) -> Tuple[dict, float, str]:
         lost_item.ocr_tokens, found_item.ocr_tokens
     )
 
+    brand_factor = ScoringEngine.calculate_brand_factor(
+        getattr(lost_item, "brand", None), getattr(found_item, "brand", None)
+    )
+
     total_score, status = ScoringEngine.calculate_total_score(
         visual_score,
         text_score,
@@ -75,6 +79,7 @@ def score_pair(lost_item: Item, found_item: Item) -> Tuple[dict, float, str]:
         ocr_bonus,
         has_image_1=bool(lost_item.image_urls),
         has_image_2=bool(found_item.image_urls),
+        brand_factor=brand_factor,
     )
 
     components = {
@@ -119,9 +124,17 @@ def find_matches_for_item(db: Session, item: Item) -> List[Match]:
 
         if status == "REJECTED":
             # A pair that no longer clears the bar should not linger from an
-            # earlier run with different data.
+            # earlier run with different data -- but claims cascade-delete with
+            # their match, so a re-score would silently erase a real handover
+            # record. Downgrade those instead of deleting them.
             if existing:
-                db.delete(existing)
+                if db.query(Claim).filter(Claim.match_id == existing.id).count():
+                    existing.status = MatchStatus.REJECTED
+                    existing.total_score = total_score
+                    for field, value in components.items():
+                        setattr(existing, field, value)
+                else:
+                    db.delete(existing)
             continue
 
         if existing:

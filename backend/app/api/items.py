@@ -98,6 +98,9 @@ async def report_item(
         build_item_text(title, description, category, campus_zone)
     )
     image_embedding = embedder.embed_image(saved_paths[0]) if saved_paths else None
+    # Read the brand off the photo. A confident disagreement later tells us two
+    # similar-looking products are different objects.
+    brand = embedder.detect_brand(saved_paths[0]) if saved_paths else None
 
     # Create item
     db_item = Item(
@@ -114,7 +117,8 @@ async def report_item(
         latitude=latitude,
         longitude=longitude,
         text_embedding=text_embedding,
-        image_embedding=image_embedding
+        image_embedding=image_embedding,
+        brand=brand
     )
 
     db.add(db_item)

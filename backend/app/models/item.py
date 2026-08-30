@@ -40,6 +40,7 @@ class Item(Base):
     image_embedding = Column(Vector(768))
     text_embedding = Column(Vector(768))
     ocr_tokens = Column(ARRAY(String), default=[])
+    brand = Column(String(50))
     is_high_value = Column(Boolean, default=False)
     private_details = Column(Text)
     status = Column(Enum(ItemStatus, name="item_status"), default=ItemStatus.OPEN, index=True)
