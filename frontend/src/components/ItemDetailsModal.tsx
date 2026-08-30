@@ -1,20 +1,25 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import {
   AlertCircle,
   CalendarClock,
   Clock,
   Hash,
+  HeartHandshake,
   Lock,
   MapPin,
   Package,
   ShieldCheck,
   Tag,
+  UserCircle,
 } from "lucide-react"
 import Modal from "@/components/Modal"
 import { useItemDetail, ItemDetail } from "@/hooks/useItemDetail"
+import { useAuthStore } from "@/hooks/useStore"
 import { resolveMediaUrl } from "@/services/api"
+import { isClaimable, isOwnReport } from "@/services/claimVerification"
 
 const categoryLabels: Record<string, string> = {
   ELECTRONICS: "Electronics",
@@ -50,7 +55,10 @@ const formatDateTime = (value?: string): string => {
 interface ItemDetailsModalProps {
   itemId: number | null
   preview?: Partial<ItemDetail> | null
-  /** Hidden for your own reports -- you cannot claim what you posted. */
+  /**
+   * Caller-side veto for contexts where claiming never applies. The LOST/FOUND
+   * and own-report rules are enforced here regardless of what is passed.
+   */
   canClaim?: boolean
   onClose: () => void
   onClaim?: (item: ItemDetail) => void
@@ -64,6 +72,7 @@ export default function ItemDetailsModal({
   onClaim,
 }: ItemDetailsModalProps) {
   const { item, complete, loading, error } = useItemDetail(itemId, preview)
+  const viewerId: number | null = useAuthStore((state) => state.user?.id ?? null)
   const [activeImage, setActiveImage] = useState(0)
 
   useEffect(() => {
@@ -76,6 +85,10 @@ export default function ItemDetailsModal({
   const masked = Boolean(item?.is_high_value) && images.length === 0
   const isLost = item?.type === "LOST"
   const tokens = item?.ocr_tokens || []
+  // A LOST report is a search notice: there is no item in hand to claim. Your
+  // own report is not claimable either, whichever way round it was filed.
+  const own = isOwnReport(item, viewerId)
+  const claimable = canClaim && isClaimable(item, viewerId)
 
   return (
     <Modal open onClose={onClose} labelledBy="item-details-title" size="wide">
@@ -202,6 +215,19 @@ export default function ItemDetailsModal({
             </section>
           ) : null}
 
+          {own ? (
+            <p className="detail-notice info">
+              <UserCircle size={15} />
+              This is your own report. Matches against it show up on your dashboard.
+            </p>
+          ) : canClaim && isLost ? (
+            <p className="detail-notice info">
+              <HeartHandshake size={15} />
+              Someone is looking for this. There is nothing to claim on a lost-item report -- if you have
+              picked it up, report it as found and matching will pair the two reports automatically.
+            </p>
+          ) : null}
+
           {item?.is_high_value ? (
             <p className="detail-notice">
               <Lock size={15} />
@@ -216,7 +242,7 @@ export default function ItemDetailsModal({
         <button type="button" className="modal-ghost" onClick={onClose}>
           Close
         </button>
-        {canClaim ? (
+        {claimable ? (
           <button
             type="button"
             className="modal-primary"
@@ -226,6 +252,10 @@ export default function ItemDetailsModal({
             <ShieldCheck size={16} />
             {complete ? "Claim Match" : "Loading details..."}
           </button>
+        ) : canClaim && isLost && !own ? (
+          <Link href="/report/found" className="modal-primary" onClick={onClose}>
+            <HeartHandshake size={16} /> I Found This
+          </Link>
         ) : null}
       </footer>
     </Modal>

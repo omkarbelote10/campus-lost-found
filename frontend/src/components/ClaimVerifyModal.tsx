@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react"
 import { AlertCircle, Loader2, Lock, MapPin, Package, ShieldCheck, Sparkles, Tag } from "lucide-react"
 import Modal from "@/components/Modal"
 import { ItemDetail } from "@/hooks/useItemDetail"
+import { useAuthStore } from "@/hooks/useStore"
 import { resolveMediaUrl } from "@/services/api"
 import {
   ChallengeQuestion,
   OwnerContact,
   fetchOwnerContact,
   generateChallengeQuestions,
+  isClaimable,
   verifyChallengeAnswers,
 } from "@/services/claimVerification"
 
@@ -29,6 +31,7 @@ interface ClaimVerifyModalProps {
 }
 
 export default function ClaimVerifyModal({ item, onClose, onVerified }: ClaimVerifyModalProps) {
+  const viewerId: number | null = useAuthStore((state) => state.user?.id ?? null)
   const [questions, setQuestions] = useState<ChallengeQuestion[]>([])
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [building, setBuilding] = useState(false)
@@ -37,7 +40,9 @@ export default function ClaimVerifyModal({ item, onClose, onVerified }: ClaimVer
   const [attempts, setAttempts] = useState(0)
 
   useEffect(() => {
-    if (!item) return
+    // Never build a challenge for a report that cannot be claimed -- the
+    // callers already filter, this keeps the rule true if one ever forgets.
+    if (!item || !isClaimable(item, viewerId)) return
 
     let active = true
     setBuilding(true)
@@ -60,13 +65,13 @@ export default function ClaimVerifyModal({ item, onClose, onVerified }: ClaimVer
     return () => {
       active = false
     }
-  }, [item])
+  }, [item, viewerId])
 
   const required = useMemo(() => questions.filter((question) => question.weight > 0), [questions])
   const answeredCount = required.filter((question) => (answers[question.id] || "").trim()).length
   const ready = required.length > 0 && answeredCount === required.length
 
-  if (!item) return null
+  if (!item || !isClaimable(item, viewerId)) return null
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()

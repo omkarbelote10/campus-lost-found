@@ -8,21 +8,25 @@ import {
   ArrowRight,
   BadgeCheck,
   Clock,
+  HeartHandshake,
   Lock,
   MapPin,
   Package,
   Search,
   Tag,
+  UserCircle,
 } from "lucide-react"
 import { itemService, resolveMediaUrl } from "@/services/api"
+import { useAuthStore } from "@/hooks/useStore"
 import { ItemDetail } from "@/hooks/useItemDetail"
-import { OwnerContact } from "@/services/claimVerification"
+import { OwnerContact, isClaimable, isOwnReport } from "@/services/claimVerification"
 import ItemDetailsModal from "@/components/ItemDetailsModal"
 import ClaimVerifyModal from "@/components/ClaimVerifyModal"
 import ContactRevealPanel from "@/components/ContactRevealPanel"
 
 interface Item {
   id: number
+  user_id: number
   title: string
   category: string
   campus_zone: string
@@ -64,6 +68,9 @@ const timeAgo = (value: string): string => {
 }
 
 export default function FeedPage() {
+  // NavBar rehydrates the store from localStorage, so this is populated on the
+  // first effect pass; until then no card is treated as the viewer's own.
+  const viewerId: number | null = useAuthStore((state) => state.user?.id ?? null)
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -89,6 +96,15 @@ export default function FeedPage() {
     setClaimLoadingId(itemId)
     try {
       const response = await itemService.getItem(itemId)
+      // Re-check against the authoritative record, not the feed summary.
+      if (!isClaimable(response.data, viewerId)) {
+        setError(
+          isOwnReport(response.data, viewerId)
+            ? "This is your own report, so there is nothing for you to claim."
+            : "Only found items can be claimed. If you have this item, report it as found instead.",
+        )
+        return
+      }
       setDetailsFor(null)
       setClaimFor(response.data)
     } catch {
@@ -329,7 +345,11 @@ export default function FeedPage() {
                       >
                         <BadgeCheck size={14} /> View Contact
                       </button>
-                    ) : (
+                    ) : isOwnReport(item, viewerId) ? (
+                      <span className="feed-own">
+                        <UserCircle size={14} /> Your report
+                      </span>
+                    ) : isClaimable(item, viewerId) ? (
                       <button
                         type="button"
                         className="feed-claim"
@@ -338,6 +358,12 @@ export default function FeedPage() {
                       >
                         {claimLoadingId === item.id ? "Opening..." : "Claim Match"}
                       </button>
+                    ) : (
+                      // Nothing to claim on a search notice -- the useful action
+                      // for a passer-by who has the item is to report it found.
+                      <Link href="/report/found" className="feed-found-this">
+                        <HeartHandshake size={14} /> I Found This
+                      </Link>
                     )}
                   </div>
                 </div>

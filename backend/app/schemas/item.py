@@ -29,6 +29,9 @@ class ItemResponse(ItemBase):
 
 class ItemListResponse(BaseModel):
     id: int
+    # Lets the feed tell a viewer which cards are their own reports, so it can
+    # hide actions that make no sense on them (you cannot claim your own item).
+    user_id: int
     title: str
     category: str
     campus_zone: str

@@ -51,6 +51,33 @@ export interface ChallengeItem {
   user_id?: number
 }
 
+/**
+ * Only someone else's FOUND report can be claimed.
+ *
+ * A FOUND report is someone holding an item and looking for its owner, so the
+ * person who lost it proves ownership and collects it. A LOST report is the
+ * opposite -- a search notice from someone who has nothing to hand over, so
+ * there is nothing to claim. If you have picked up the item described in a
+ * LOST report, the right move is to file it as found, which puts it through
+ * the matching pipeline instead.
+ *
+ * `viewerId` is the signed-in user. Left undefined (a signed-out visitor, or a
+ * record that does not carry an owner) ownership simply is not checked -- the
+ * type rule still applies.
+ */
+export const isClaimable = (
+  item?: { type?: string; user_id?: number } | null,
+  viewerId?: number | null,
+): boolean => {
+  if (item?.type !== "FOUND") return false
+  if (viewerId != null && item.user_id != null && item.user_id === viewerId) return false
+  return true
+}
+
+/** True when the report belongs to the viewer, so the UI can label it as theirs. */
+export const isOwnReport = (item?: { user_id?: number } | null, viewerId?: number | null): boolean =>
+  viewerId != null && item?.user_id != null && item.user_id === viewerId
+
 // Answer keys never travel to the component tree, so they cannot be read off
 // the rendered DOM or React props the way a question-embedded answer could.
 const answerKeys = new Map<number, Record<string, string>>()
