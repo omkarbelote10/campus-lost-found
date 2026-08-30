@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns"
 import {
   AlertCircle,
   ArrowRight,
+  BadgeCheck,
   Clock,
   Lock,
   MapPin,
@@ -14,6 +15,11 @@ import {
   Tag,
 } from "lucide-react"
 import { itemService, resolveMediaUrl } from "@/services/api"
+import { ItemDetail } from "@/hooks/useItemDetail"
+import { OwnerContact } from "@/services/claimVerification"
+import ItemDetailsModal from "@/components/ItemDetailsModal"
+import ClaimVerifyModal from "@/components/ClaimVerifyModal"
+import ContactRevealPanel from "@/components/ContactRevealPanel"
 
 interface Item {
   id: number
@@ -67,6 +73,38 @@ export default function FeedPage() {
     campus_zone: "",
     type: "",
   })
+
+  // Claim flow: details dialog -> ownership challenge -> contact released on
+  // the page itself. Unlocked contacts stay in memory so a claimant can reopen
+  // one after dismissing the panel.
+  const [detailsFor, setDetailsFor] = useState<Item | null>(null)
+  const [claimFor, setClaimFor] = useState<ItemDetail | null>(null)
+  const [unlocked, setUnlocked] = useState<Record<number, { item: ItemDetail; contact: OwnerContact }>>({})
+  const [shownContact, setShownContact] = useState<number | null>(null)
+  const [claimLoadingId, setClaimLoadingId] = useState<number | null>(null)
+
+  // Claiming straight from a card skips the details dialog, so the full record
+  // (description, OCR tokens) has to be fetched before the challenge can be built.
+  const openClaim = async (itemId: number) => {
+    setClaimLoadingId(itemId)
+    try {
+      const response = await itemService.getItem(itemId)
+      setDetailsFor(null)
+      setClaimFor(response.data)
+    } catch {
+      setError("We could not open the claim for this item. Please try again.")
+    } finally {
+      setClaimLoadingId(null)
+    }
+  }
+
+  const handleVerified = (item: ItemDetail, contact: OwnerContact) => {
+    setUnlocked((current) => ({ ...current, [item.id]: { item, contact } }))
+    setClaimFor(null)
+    setDetailsFor(null)
+    setShownContact(item.id)
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" })
+  }
 
   useEffect(() => {
     let active = true
@@ -123,6 +161,14 @@ export default function FeedPage() {
           Report an item <ArrowRight size={16} />
         </Link>
       </header>
+
+      {shownContact !== null && unlocked[shownContact] ? (
+        <ContactRevealPanel
+          item={unlocked[shownContact].item}
+          contact={unlocked[shownContact].contact}
+          onDismiss={() => setShownContact(null)}
+        />
+      ) : null}
 
       <div className="feed-toolbar">
         <div className="pill-group">
@@ -272,12 +318,27 @@ export default function FeedPage() {
                   </p>
 
                   <div className="feed-actions">
-                    <button type="button" className="feed-view">
+                    <button type="button" className="feed-view" onClick={() => setDetailsFor(item)}>
                       View Details
                     </button>
-                    <button type="button" className="feed-claim">
-                      Claim Match
-                    </button>
+                    {unlocked[item.id] ? (
+                      <button
+                        type="button"
+                        className="feed-unlocked"
+                        onClick={() => setShownContact(item.id)}
+                      >
+                        <BadgeCheck size={14} /> View Contact
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="feed-claim"
+                        disabled={claimLoadingId === item.id}
+                        onClick={() => openClaim(item.id)}
+                      >
+                        {claimLoadingId === item.id ? "Opening..." : "Claim Match"}
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
@@ -285,6 +346,19 @@ export default function FeedPage() {
           })}
         </div>
       )}
+
+      <ItemDetailsModal
+        itemId={detailsFor?.id ?? null}
+        preview={detailsFor}
+        canClaim={!(detailsFor && unlocked[detailsFor.id])}
+        onClose={() => setDetailsFor(null)}
+        onClaim={(item) => {
+          setDetailsFor(null)
+          setClaimFor(item)
+        }}
+      />
+
+      <ClaimVerifyModal item={claimFor} onClose={() => setClaimFor(null)} onVerified={handleVerified} />
     </div>
   )
 }
