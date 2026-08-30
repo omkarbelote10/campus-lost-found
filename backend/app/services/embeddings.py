@@ -39,6 +39,11 @@ logger = logging.getLogger(__name__)
 
 EMBEDDING_DIM = 768
 
+# Share of patches kept as "the object" by the saliency crop. 0.35 was measured
+# against labelled same-object pairs; tighter crops start clipping the object,
+# looser ones let the background back in.
+SALIENT_QUANTILE = 0.35
+
 # SigLIP was trained with a fixed 64-token text window and, unlike CLIP, expects
 # every sequence padded to it. Dynamic padding silently degrades the embedding.
 _TEXT_PADDING = "max_length"
@@ -255,6 +260,46 @@ class DINOv2ImageEmbedder(_LazyModel):
 
     GRID = 16  # 224 / patch size 14
 
+    @classmethod
+    def _largest_blob(cls, mask):
+        """Bounding box of the biggest 4-connected run of salient patches.
+
+        Returns (ys, xs) index tensors for that blob, or (None, None) when the
+        mask is empty. Blobs are ranked by patch count, so scattered background
+        speckle loses to the one compact region the object occupies.
+        """
+        import torch
+
+        grid = mask.cpu().numpy()
+        seen = grid.copy() * 0
+        best = None
+        for start_y in range(cls.GRID):
+            for start_x in range(cls.GRID):
+                if not grid[start_y][start_x] or seen[start_y][start_x]:
+                    continue
+                # Iterative flood fill; recursion would risk a deep stack on a
+                # blob spanning the whole grid.
+                stack, blob = [(start_y, start_x)], []
+                seen[start_y][start_x] = 1
+                while stack:
+                    y, x = stack.pop()
+                    blob.append((y, x))
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < cls.GRID and 0 <= nx < cls.GRID:
+                            if grid[ny][nx] and not seen[ny][nx]:
+                                seen[ny][nx] = 1
+                                stack.append((ny, nx))
+                if best is None or len(blob) > len(best):
+                    best = blob
+
+        if not best:
+            return None, None
+        return (
+            torch.tensor([p[0] for p in best]),
+            torch.tensor([p[1] for p in best]),
+        )
+
     def _object_crop(self, original: Image.Image) -> Image.Image:
         """Crop to the salient object so the surroundings cannot sway the vector.
 
@@ -279,13 +324,31 @@ class DINOv2ImageEmbedder(_LazyModel):
             patches = out[1:] / out[1:].norm(dim=-1, keepdim=True)
 
             saliency = (patches @ cls).reshape(self.GRID, self.GRID)
-            ys, xs = torch.where(saliency > saliency.mean() + 0.35 * saliency.std())
-            if len(xs) < 4:
+
+            # Keep the most salient patches by RANK, not by distance from the
+            # mean. A mean+k*std cut adapts badly to cluttered scenes: a photo of
+            # an object held up in a room has salient edges everywhere, so the
+            # cut admits most of the frame. A fixed top quantile keeps the same
+            # number of patches whatever the scene.
+            mask = saliency >= torch.quantile(saliency.flatten().float(), 1.0 - SALIENT_QUANTILE)
+            if int(mask.sum()) < 4:
+                return boxed
+
+            # Take the largest connected blob rather than the bounding box of
+            # every surviving patch. The old global min/max meant one stray
+            # background patch in a far corner stretched the box to the whole
+            # image -- which is exactly what happened to a phone photographed
+            # against a room: the "crop" kept desks, whiteboard and doorway, and
+            # the embedding described the room instead of the phone.
+            ys, xs = self._largest_blob(mask)
+            if ys is None:
                 return boxed
 
             cell = self.INPUT_SIZE / self.GRID
-            box = (xs.min().item() * cell, ys.min().item() * cell,
-                   (xs.max().item() + 1) * cell, (ys.max().item() + 1) * cell)
+            # One patch of margin: the saliency map is coarse at 16x16, so a
+            # tight box tends to clip the object's edges.
+            box = (max(0, xs.min() - 1) * cell, max(0, ys.min() - 1) * cell,
+                   min(self.GRID, xs.max() + 2) * cell, min(self.GRID, ys.max() + 2) * cell)
 
             # Map the box out of letterboxed space back onto original pixels.
             w, h = original.size

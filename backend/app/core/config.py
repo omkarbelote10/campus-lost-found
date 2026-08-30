@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     # embeddings, rather than quietly running 20x slower than the deploy intended.
     EMBEDDING_DEVICE: str = "auto"
 
+    # Load the embedding models in a background thread at startup instead of on
+    # the first report. Lazy loading keeps startup instant, but it hands the cost
+    # to whoever files the first report -- measured at ~8s (SigLIP 6.7s, DINOv2
+    # 1.2s), which reads as "matching is slow" when it is really "matching is
+    # slow once". Warming in a daemon thread keeps startup non-blocking and has
+    # the weights resident before anyone submits. Set false on a memory-tight
+    # box, where paying the 8s once is better than holding ~750MB permanently.
+    WARM_EMBEDDINGS_ON_STARTUP: bool = True
+
     # Crop to the salient object before embedding, so the same item photographed
     # in different surroundings still matches itself. Set false to embed the
     # whole frame instead.

@@ -29,6 +29,47 @@ app = FastAPI(
 
 settings = get_settings()
 
+
+def _warm_embedding_models() -> None:
+    """Load the embedding weights ahead of the first request.
+
+    The towers load lazily on first use, which keeps startup instant but hands
+    the cost to whoever files the first report -- measured at ~8s (SigLIP 6.7s,
+    DINOv2 1.2s). That reads as "matching is slow" when it is really "matching is
+    slow once".
+
+    Deliberately on a daemon thread: startup must not block on this, so the
+    health check passes and every non-matching route serves immediately while the
+    weights stream in. A daemon thread also will not hold the process open at
+    shutdown if a load is still in flight.
+    """
+    import threading
+    import time
+
+    if not settings.EMBEDDINGS_ENABLED or not settings.WARM_EMBEDDINGS_ON_STARTUP:
+        return
+
+    def warm() -> None:
+        from app.services.embeddings import get_embedder
+
+        logger = logging.getLogger(__name__)
+        started = time.perf_counter()
+        embedder = get_embedder()
+        # _ensure_loaded latches and logs its own failures, so a model that
+        # cannot load leaves the app running with matching degraded rather than
+        # taking startup down with it.
+        embedder.text._ensure_loaded()
+        embedder.image._ensure_loaded()
+        logger.info(
+            "embedding models warm after %.1fs; the first report will not pay the load",
+            time.perf_counter() - started,
+        )
+
+    threading.Thread(target=warm, name="warm-embeddings", daemon=True).start()
+
+
+_warm_embedding_models()
+
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
