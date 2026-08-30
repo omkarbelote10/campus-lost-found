@@ -17,10 +17,26 @@ class ScoringEngine:
     # Decay constants
     TEMPORAL_LAMBDA = 0.05
     SPATIAL_DECAY_CONSTANT = 0.5
-    
-    # Thresholds
-    HIGH_CONFIDENCE_THRESHOLD = 0.80
-    POTENTIAL_THRESHOLD = 0.55
+
+    # Context (space/time) can attenuate a match, never veto it. Multiplying the
+    # feature score by raw decay makes thresholds impossible: a true match found
+    # 7 days later (0.90 * 0.705 = 0.63) scores BELOW a same-day false match
+    # (0.65 * 1.0). With the floor, context scales the score into
+    # [CONTEXT_FLOOR, 1.0] x feature, so "right item, found later / elsewhere"
+    # stays above "wrong item, found here and now".
+    CONTEXT_FLOOR = 0.65
+
+    # Two products of the same category whose photos carry different brand marks
+    # are almost never the same object, however alike they look. Applied only
+    # when BOTH brands were read confidently -- an unknown brand is not evidence.
+    BRAND_MISMATCH_PENALTY = 0.55
+
+    # Thresholds, calibrated on backend/scripts/benchmark.py (real uploads,
+    # graded re-photography): at 0.70 precision was 57% -> after the context
+    # floor the false band tops out ~0.65, so 0.70 surfaces true matches across
+    # a two-week gap while cutting same-day false pairs.
+    HIGH_CONFIDENCE_THRESHOLD = 0.85
+    POTENTIAL_THRESHOLD = 0.70
     
     @staticmethod
     def calculate_visual_score(image_embedding_1: Optional[list], image_embedding_2: Optional[list]) -> float:
@@ -32,12 +48,14 @@ class ScoringEngine:
             vec1 = np.array(image_embedding_1)
             vec2 = np.array(image_embedding_2)
             
-            # Cosine similarity
+            # Cosine similarity. float() is required, not cosmetic: numpy returns
+            # a float32 scalar here and psycopg2 cannot adapt one, so persisting
+            # the score raises "can't adapt type 'numpy.float32'".
             similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-            return max(0.0, similarity)
+            return float(max(0.0, similarity))
         except Exception:
             return 0.0
-    
+
     @staticmethod
     def calculate_text_score(text_embedding_1: Optional[list], text_embedding_2: Optional[list]) -> float:
         """Calculate cosine similarity between text embeddings"""
@@ -48,12 +66,13 @@ class ScoringEngine:
             vec1 = np.array(text_embedding_1)
             vec2 = np.array(text_embedding_2)
             
-            # Cosine similarity
+            # See calculate_visual_score: the float() cast keeps psycopg2 able to
+            # persist this value.
             similarity = np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-            return max(0.0, similarity)
+            return float(max(0.0, similarity))
         except Exception:
             return 0.0
-    
+
     @staticmethod
     def calculate_category_score(category_1: str, category_2: str) -> float:
         """Category exact match score"""
@@ -116,13 +135,17 @@ class ScoringEngine:
     @staticmethod
     def are_adjacent_zones(zone1: str, zone2: str) -> bool:
         """Check if two zones are adjacent"""
+        # Keys must match the zone names the frontend submits exactly. These
+        # previously said "Engineering Block B" and "Hostel 3" while the forms
+        # send "Engineering Block" and "Hostel", so adjacency never matched and
+        # every cross-zone pair was scored as distant.
         adjacent_map = {
-            "Library Zone": ["Engineering Block B", "Administration Block"],
-            "Engineering Block B": ["Library Zone", "Hostel 3"],
-            "Hostel 3": ["Engineering Block B", "Sports Complex"],
+            "Library Zone": ["Engineering Block", "Administration Block"],
+            "Engineering Block": ["Library Zone", "Hostel"],
+            "Hostel": ["Engineering Block", "Sports Complex"],
             "Administration Block": ["Library Zone", "Science Block"],
             "Science Block": ["Administration Block", "Sports Complex"],
-            "Sports Complex": ["Hostel 3", "Science Block"],
+            "Sports Complex": ["Hostel", "Science Block"],
         }
         
         return zone1 in adjacent_map.get(zone2, [])
@@ -146,6 +169,15 @@ class ScoringEngine:
             return 0.0, 0.70, 0.30
     
     @staticmethod
+    def calculate_brand_factor(brand_1: Optional[str], brand_2: Optional[str]) -> float:
+        """1.0 unless both brands are known and disagree."""
+        if not brand_1 or not brand_2:
+            return 1.0
+        if brand_1.strip().lower() == brand_2.strip().lower():
+            return 1.0
+        return ScoringEngine.BRAND_MISMATCH_PENALTY
+
+    @staticmethod
     def calculate_total_score(
         visual_score: float,
         text_score: float,
@@ -154,7 +186,8 @@ class ScoringEngine:
         temporal_decay: float,
         ocr_bonus: float,
         has_image_1: bool,
-        has_image_2: bool
+        has_image_2: bool,
+        brand_factor: float = 1.0
     ) -> Tuple[float, str]:
         """
         Calculate total match score and determine status
@@ -168,12 +201,17 @@ class ScoringEngine:
         
         # Multimodal feature score
         feature_score = w_v * visual_score + w_t * text_score + w_c * category_score
-        
-        # Apply contextual decay
-        contextual_score = feature_score * (spatial_decay * temporal_decay)
-        
-        # Add OCR bonus
-        total_score = contextual_score + ocr_bonus
+
+        # Apply contextual decay, floored so context attenuates but never vetoes
+        # (see CONTEXT_FLOOR).
+        floor = ScoringEngine.CONTEXT_FLOOR
+        context = floor + (1.0 - floor) * (spatial_decay * temporal_decay)
+        contextual_score = feature_score * context
+
+        # A confident brand disagreement scales the whole thing down, including
+        # the OCR bonus: a shared serial-like token means nothing if the photos
+        # show products from two different makers.
+        total_score = (contextual_score + ocr_bonus) * brand_factor
         
         # Normalize to [0, 1]
         total_score = min(1.0, max(0.0, total_score))

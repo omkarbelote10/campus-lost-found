@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { itemService, isTokenValid } from "@/services/api"
+import { itemService, matchService, isTokenValid } from "@/services/api"
+import ReportSuccess, { ReportMatch } from "../ReportSuccess"
 
 // Must match the backend's allowed upload extensions (see utils/validators.py)
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
@@ -25,6 +26,9 @@ export default function ReportFoundPage() {
   const [images, setImages] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [submitted, setSubmitted] = useState<{ title: string } | null>(null)
+  const [matches, setMatches] = useState<ReportMatch[]>([])
+  const [matchesLoading, setMatchesLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
   const [previews, setPreviews] = useState<string[]>([])
@@ -107,8 +111,20 @@ export default function ReportFoundPage() {
 
       images.forEach((img) => form.append("images", img))
 
-      await itemService.reportItem(form)
-      router.push("/dashboard")
+      // Matching already ran server side during the report, so show the results
+      // here rather than sending the user to the dashboard to discover them.
+      const created = await itemService.reportItem(form)
+      setSubmitted({ title: formData.title })
+      setMatchesLoading(true)
+      try {
+        const response = await matchService.getItemMatches(created.data.id)
+        setMatches(response.data)
+      } catch {
+        setMatches([])
+      } finally {
+        setMatchesLoading(false)
+      }
+      return
     } catch (err: any) {
       const detail = err.response?.data?.detail
       if (err.response?.status === 401) {
@@ -123,6 +139,14 @@ export default function ReportFoundPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (submitted) {
+    return (
+      <div className="report-page">
+        <ReportSuccess type="FOUND" title={submitted.title} matches={matches} loading={matchesLoading} />
+      </div>
+    )
   }
 
   return (

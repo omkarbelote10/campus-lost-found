@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -12,9 +13,12 @@ from app.models.item import Item, ItemType, ItemCategory, ItemStatus
 from app.schemas.item import ItemCreate, ItemResponse, ItemListResponse
 from app.utils.validators import validate_file_extension, extract_ocr_tokens
 from app.core.security import get_current_user_id, get_optional_user_id
+from app.services.embeddings import build_item_text, get_embedder
+from app.services.matching import find_matches_for_item
 
 router = APIRouter()
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 @router.post("/report", response_model=ItemResponse)
 async def report_item(
@@ -45,6 +49,7 @@ async def report_item(
     
     # Process images
     image_urls = []
+    saved_paths = []
     # Browsers send an empty part for an empty file input; ignore those
     files = [img for img in (images or []) if img and img.filename]
     if files:
@@ -69,10 +74,12 @@ async def report_item(
             ext = image.filename.rsplit(".", 1)[1].lower()
             filename = f"{user_id}_{uuid4().hex}.{ext}"
 
-            with open(upload_dir / filename, "wb") as f:
+            destination = upload_dir / filename
+            with open(destination, "wb") as f:
                 f.write(content)
 
             image_urls.append(f"/uploads/{filename}")
+            saved_paths.append(str(destination))
 
     # Parse incident time
     try:
@@ -82,7 +89,19 @@ async def report_item(
     
     # Extract OCR tokens from description
     ocr_tokens = extract_ocr_tokens(description)
-    
+
+    # Multimodal embeddings. These are what make the visual and text terms of the
+    # hybrid score non-zero; with them NULL the formula collapses to category and
+    # decay, which cannot clear the POTENTIAL threshold on its own.
+    embedder = get_embedder()
+    text_embedding = embedder.embed_text(
+        build_item_text(title, description, category, campus_zone)
+    )
+    image_embedding = embedder.embed_image(saved_paths[0]) if saved_paths else None
+    # Read the brand off the photo. A confident disagreement later tells us two
+    # similar-looking products are different objects.
+    brand = embedder.detect_brand(saved_paths[0]) if saved_paths else None
+
     # Create item
     db_item = Item(
         user_id=user_id,
@@ -96,14 +115,32 @@ async def report_item(
         ocr_tokens=ocr_tokens,
         is_high_value=is_high_value,
         latitude=latitude,
-        longitude=longitude
+        longitude=longitude,
+        text_embedding=text_embedding,
+        image_embedding=image_embedding,
+        brand=brand
     )
-    
+
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
-    
-    return ItemResponse.from_orm(db_item)
+
+    # Snapshot the response before matching runs: the report is already saved and
+    # must be returned intact even if the matching pass below fails.
+    response = ItemResponse.from_orm(db_item)
+
+    # Score the new report against open counterparts straight away, so matches
+    # are waiting for the user instead of needing a second explicit request.
+    # Matching must never cost the user the report they just filed, but it must
+    # not fail silently either -- log it, or a broken scorer looks like "no matches".
+    try:
+        find_matches_for_item(db, db_item)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Automatic matching failed for item %s", db_item.id)
+
+    return response
 
 @router.get("/feed", response_model=List[ItemListResponse])
 async def get_feed(

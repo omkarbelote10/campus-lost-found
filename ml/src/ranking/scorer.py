@@ -11,6 +11,8 @@ class HybridScorer:
     WEIGHT_CATEGORY = 0.25
     TEMPORAL_LAMBDA = 0.05
     SPATIAL_DECAY_CONSTANT = 0.5
+    # Mirrors backend ScoringEngine.CONTEXT_FLOOR: context attenuates, never vetoes.
+    CONTEXT_FLOOR = 0.65
 
     @classmethod
     def score_pair(
@@ -46,5 +48,6 @@ class HybridScorer:
 
         b_ocr = 0.25 if ocr_tokens_intersect else 0.0
 
-        total = (multimodal_score * (d_spat * d_temp)) + b_ocr
+        context = cls.CONTEXT_FLOOR + (1.0 - cls.CONTEXT_FLOOR) * (d_spat * d_temp)
+        total = (multimodal_score * context) + b_ocr
         return min(1.0, max(0.0, total))

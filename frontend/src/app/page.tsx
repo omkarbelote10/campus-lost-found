@@ -85,7 +85,7 @@ export default function Home() {
           <p className="eyebrow"><span className="eyebrow-dot" /> Campus item recovery</p>
           <h1>Lost something?<br /><em>Let&apos;s find it.</em></h1>
           <p className="hero-lede">A calmer, smarter way for your campus community to reunite people with the things that matter.</p>
-          <div className="hero-actions"><Link href="/report/lost" className="action-button lost"><span className="action-plus">+</span> Report lost item</Link><Link href="/feed" className="text-link">Browse found items <ArrowRight size={17} /></Link></div>
+          <div className="hero-actions"><Link href="/report/lost" className="action-button lost"><span className="action-plus">+</span> Report lost item</Link><Link href="/report/found" className="action-button found"><span className="action-plus">+</span> Report found item</Link><Link href="/feed" className="text-link">Browse found items <ArrowRight size={17} /></Link></div>
           <div className="trust-row"><span><Check size={15} /> Campus verified</span><span><ShieldCheck size={15} /> Secure handoff</span><span><Sparkles size={15} /> Smart matching</span></div>
         </div>
         <div className="hero-visual reveal" data-parallax="0.08">

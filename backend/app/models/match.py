@@ -22,7 +22,7 @@ class Match(Base):
     temporal_decay = Column(Float, nullable=False)
     ocr_bonus = Column(Float, nullable=False)
     total_score = Column(Float, nullable=False, index=True)
-    status = Column(Enum(MatchStatus), nullable=False)
+    status = Column(Enum(MatchStatus, name="match_status"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -35,8 +35,6 @@ class Claim(Base):
     challenge_question = Column(String(500), nullable=False)
     claimant_answer = Column(String(500), nullable=False)
     is_challenge_approved = Column(Boolean, default=False)
-    handshake_qr_token = Column(String(500))
-    handover_by_user_id = Column(Integer, ForeignKey("users.id"))
     resolved_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

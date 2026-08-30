@@ -33,22 +33,6 @@ def get_optional_user_id(
     user_id = payload.get("sub") if payload else None
     return int(user_id) if user_id else None
 
-def require_admin(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
-) -> int:
-    """Require a SECURITY_ADMIN token. Returns the admin's user id."""
-    if not credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-
-    payload = verify_token(credentials.credentials)
-    if not payload or not payload.get("sub"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-
-    if payload.get("role") != "SECURITY_ADMIN":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
-    return int(payload["sub"])
-
 def _password_bytes(password: str) -> bytes:
     """bcrypt only consumes the first 72 bytes; truncate so long passwords hash
     instead of raising. Produces the same digest as the previous passlib setup."""
@@ -79,13 +63,3 @@ def verify_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
-
-def create_qr_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.QR_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
